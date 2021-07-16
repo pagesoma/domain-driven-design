@@ -45,6 +45,7 @@
 
 ### 모듈 구성
 ![](images/tactical-design/modules.png)
+- 
 
 ### 애그리거트
 - 애그리거트 루트는 애그리거트 내부의 다른 객체를 조합해서 기능을 완성한다.
@@ -152,7 +153,8 @@ public class JpaOrderRepository implements OrderRepository {
   - 테스트가 어려움
 - 고수준 모듈은 `추상화한 인터페이스에 의존`
 - DIP를 잘 적용한 구조
-![](images/tactical-design/dip.png)
+  
+  ![](images/tactical-design/dip.png)
   
 ### 엔티티와 DB 테이블의 매핑
 - 엔티티와 밸류가 한 테이블로 매핑
@@ -224,9 +226,47 @@ private Money price;
 ```
 
 ### 밸류 컬렉션을 별도 테이블로 매핑
+- 밸류 컬렉션을 별도 테이블로 매핑할 때는 @ElementCollection과 @CollectionTable을 함께 사용한다.
+```java
+@Entity
+@Table(name = "purchase_order")
+public class Order {
+  @EmbeddedId
+  private OrderNo number;
+  
+  @Version
+  private long version;
+  
+  @ElementCollection
+  @CollectionTable(name = "order_line", joinColumn = @JoinColumn(name = "order_number"))
+  @OrderColumn(name = "line_idx")
+  private List<OrderLine> orderLines;
+}
+```
+
 ### 리포지토리와 도메인 모델 구현 시 주의사항
+- JPA의 @Entity와 @Embeddable로 클래스를 매핑하려면 기본 생성자를 제공해야 한다.
+  - 하이버네이트와 같은 JPA 프로바이더는 DB에서 데이터를 읽어와 매핑된 객체를 생성할 때 기본 생성자를 사용해서 객체를 생성한다.
+  - 다른 코드에서 기본 생성자를 사용하지 못하도록 protected로 선언한다.
+- 엔티티는 외부에 set 메서드 대신 `의도가 잘 드러나는 기능을 제공`해야 한다.
+- get/set 메서드를 추가하면 도메인의 의도가 사라지고 객체가 아닌 데이터 기반으로 엔티티를 구현할 가능성이 높아짐
+  - set 메서드는 캡슐화를 깨는 원인이 됨
+
 ### 애그리거트 로딩 전략
+- JPA 매핑을 설정할 때 애그리거트 루트에 속한 객체가 모두 모여 `완전한 상태`여야 한다.
+  - 상태를 변경하는 기능을 실행할 때 애그리거트 상태가 완전해야 함.
+  - 표현 영역에서 애그리거트의 상태 정보를 보여줄 때 필요하기 때문.
+  ```java
+  // product는 완전한 하나여야 한다.
+  Product product = productRepository.findById(new ProductId(productId));
+  }
+  ```
+- 상태 변경 기능을 실행하기 위해 조회 시점에 애그리거트를 완전한 상태로 로딩할 필요는 없다.
+  - 실제로 상태를 변경하는 시점에 필요한 구성요소만 로딩해도 됨
+
+
 ### 연관 매핑 조회 방식 - 즉시 로딩
+
 ### 연관 매핑 조회 방식 - 지연 로딩
 ### 애그리거트 영속성 전파
 ### 애그리거트에 속한 엔티티 타입에 대한 매핑
